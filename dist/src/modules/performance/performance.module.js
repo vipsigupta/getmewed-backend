@@ -11,14 +11,13 @@ const common_1 = require("@nestjs/common");
 const performance_controller_1 = require("./performance.controller");
 const performance_service_1 = require("./performance.service");
 const prisma_module_1 = require("../../prisma/prisma.module");
-const websocket_module_1 = require("../../websocket/websocket.module");
 const notification_module_1 = require("../notification/notification.module");
 let PerformanceModule = class PerformanceModule {
 };
 exports.PerformanceModule = PerformanceModule;
 exports.PerformanceModule = PerformanceModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, websocket_module_1.WebsocketModule, notification_module_1.NotificationModule],
+        imports: [prisma_module_1.PrismaModule, notification_module_1.NotificationModule],
         controllers: [performance_controller_1.PerformanceController],
         providers: [performance_service_1.PerformanceService],
         exports: [performance_service_1.PerformanceService],

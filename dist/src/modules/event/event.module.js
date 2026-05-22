@@ -11,14 +11,13 @@ const common_1 = require("@nestjs/common");
 const event_controller_1 = require("./event.controller");
 const event_service_1 = require("./event.service");
 const prisma_module_1 = require("../../prisma/prisma.module");
-const websocket_module_1 = require("../../websocket/websocket.module");
 const notification_module_1 = require("../notification/notification.module");
 let EventModule = class EventModule {
 };
 exports.EventModule = EventModule;
 exports.EventModule = EventModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, websocket_module_1.WebsocketModule, notification_module_1.NotificationModule],
+        imports: [prisma_module_1.PrismaModule, notification_module_1.NotificationModule],
         controllers: [event_controller_1.EventController],
         providers: [event_service_1.EventService],
         exports: [event_service_1.EventService],

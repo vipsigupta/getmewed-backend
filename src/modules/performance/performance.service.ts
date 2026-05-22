@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { NotificationService } from '../notification/notification.service';
@@ -13,7 +13,7 @@ import { FeedPostType, PerformanceStatus } from '@prisma/client';
 export class PerformanceService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly gateway: EventsGateway,
+    @Optional() private readonly gateway: EventsGateway | undefined,
     private readonly notifications: NotificationService,
   ) {}
 
@@ -51,8 +51,8 @@ export class PerformanceService {
     await this.broadcastQueue(performance.spaceId);
 
     if (dto.status === PerformanceStatus.LIVE) {
-      // Full cinematic takeover on big screen
-      this.gateway.broadcastToBigScreen(performance.spaceId, 'bigscreen:now_performing', {
+      // Full cinematic takeover on big screen (if WebSocket is available)
+      this.gateway?.broadcastToBigScreen(performance.spaceId, 'bigscreen:now_performing', {
         id: performance.id,
         title: performance.title,
         performers: performance.performers,
@@ -60,7 +60,7 @@ export class PerformanceService {
       });
 
       // Emit dedicated LIVE event to all phones
-      this.gateway.broadcastToSpace(performance.spaceId, 'server:performance_live', performance);
+      this.gateway?.broadcastToSpace(performance.spaceId, 'server:performance_live', performance);
 
       // FCM push to all guests
       await this.notifications.notifyPerformanceLive(
@@ -102,7 +102,7 @@ export class PerformanceService {
 
   private async broadcastQueue(spaceId: string) {
     const queue = await this.getQueue(spaceId);
-    this.gateway.broadcastToSpace(spaceId, 'server:queue_updated', queue);
+    this.gateway?.broadcastToSpace(spaceId, 'server:queue_updated', queue);
     return queue;
   }
 

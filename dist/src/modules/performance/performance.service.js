@@ -8,11 +8,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PerformanceService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
-const events_gateway_1 = require("../../websocket/events.gateway");
 const notification_service_1 = require("../notification/notification.service");
 const client_1 = require("@prisma/client");
 let PerformanceService = class PerformanceService {
@@ -48,13 +50,13 @@ let PerformanceService = class PerformanceService {
         });
         await this.broadcastQueue(performance.spaceId);
         if (dto.status === client_1.PerformanceStatus.LIVE) {
-            this.gateway.broadcastToBigScreen(performance.spaceId, 'bigscreen:now_performing', {
+            this.gateway?.broadcastToBigScreen(performance.spaceId, 'bigscreen:now_performing', {
                 id: performance.id,
                 title: performance.title,
                 performers: performance.performers,
                 songName: performance.songName,
             });
-            this.gateway.broadcastToSpace(performance.spaceId, 'server:performance_live', performance);
+            this.gateway?.broadcastToSpace(performance.spaceId, 'server:performance_live', performance);
             await this.notifications.notifyPerformanceLive(performance.spaceId, performance.performers, performance.songName ?? undefined);
             const adminGuestId = await this.getFirstAdminGuestId(performance.spaceId);
             await this.prisma.feedPost.create({
@@ -79,7 +81,7 @@ let PerformanceService = class PerformanceService {
     }
     async broadcastQueue(spaceId) {
         const queue = await this.getQueue(spaceId);
-        this.gateway.broadcastToSpace(spaceId, 'server:queue_updated', queue);
+        this.gateway?.broadcastToSpace(spaceId, 'server:queue_updated', queue);
         return queue;
     }
     async getFirstAdminGuestId(spaceId) {
@@ -97,8 +99,7 @@ let PerformanceService = class PerformanceService {
 exports.PerformanceService = PerformanceService;
 exports.PerformanceService = PerformanceService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        events_gateway_1.EventsGateway,
-        notification_service_1.NotificationService])
+    __param(1, (0, common_1.Optional)()),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService, Object, notification_service_1.NotificationService])
 ], PerformanceService);
 //# sourceMappingURL=performance.service.js.map

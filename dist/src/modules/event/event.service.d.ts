@@ -6,7 +6,7 @@ export declare class EventService {
     private readonly prisma;
     private readonly gateway;
     private readonly notifications;
-    constructor(prisma: PrismaService, gateway: EventsGateway, notifications: NotificationService);
+    constructor(prisma: PrismaService, gateway: EventsGateway | undefined, notifications: NotificationService);
     createEvent(dto: CreateEventDto): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.EventStatus;

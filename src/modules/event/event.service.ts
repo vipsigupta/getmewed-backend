@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { NotificationService } from '../notification/notification.service';
@@ -9,7 +9,7 @@ import { EventStatus, FeedPostType } from '@prisma/client';
 export class EventService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly gateway: EventsGateway,
+    @Optional() private readonly gateway: EventsGateway | undefined,
     private readonly notifications: NotificationService,
   ) {}
 
@@ -47,12 +47,12 @@ export class EventService {
       data: { status: dto.status },
     });
 
-    // Socket broadcast
-    this.gateway.broadcastToSpace(event.spaceId, 'server:event_live', event);
+    // Socket broadcast (if WebSocket is available)
+    this.gateway?.broadcastToSpace(event.spaceId, 'server:event_live', event);
 
     if (dto.status === EventStatus.LIVE) {
       // Big screen takeover
-      this.gateway.broadcastToBigScreen(event.spaceId, 'bigscreen:flash_announcement', {
+      this.gateway?.broadcastToBigScreen(event.spaceId, 'bigscreen:flash_announcement', {
         title: `${event.title} is now LIVE!`,
         venue: event.venue,
       });
@@ -88,15 +88,15 @@ export class EventService {
       },
     });
 
-    // Socket: arrival card on all phones + big screen
-    this.gateway.broadcastToSpace(guest.spaceId, 'server:guest_arrived', {
+    // Socket: arrival card on all phones + big screen (if WebSocket is available)
+    this.gateway?.broadcastToSpace(guest.spaceId, 'server:guest_arrived', {
       guestId: guest.id,
       name: guest.name,
       group: guest.group,
       relation: guest.relation,
       profileUrl: guest.profileUrl,
     });
-    this.gateway.broadcastToBigScreen(guest.spaceId, 'bigscreen:flash_arrival', {
+    this.gateway?.broadcastToBigScreen(guest.spaceId, 'bigscreen:flash_arrival', {
       name: guest.name,
       group: guest.group,
       profileUrl: guest.profileUrl,

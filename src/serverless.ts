@@ -19,6 +19,9 @@ async function bootstrap(): Promise<Handler> {
   const app = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressApp),
+    {
+      logger: ['error', 'warn', 'log'],
+    }
   );
 
   // Prefix & CORS
@@ -53,6 +56,14 @@ export const handler: Handler = async (
   context: Context,
   callback: Callback,
 ) => {
-  const server = await bootstrap();
-  return server(event, context, callback);
+  try {
+    const server = await bootstrap();
+    return server(event, context, callback);
+  } catch (error) {
+    console.error('Serverless bootstrap error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Internal Server Error', message: error.message }),
+    };
+  }
 };

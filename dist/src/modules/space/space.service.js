@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SpaceService = void 0;
 const common_1 = require("@nestjs/common");
@@ -53,13 +56,13 @@ let SpaceService = class SpaceService {
             where: { id },
             data: { status: dto.status },
         });
-        this.gateway.broadcastToSpace(id, 'server:space_status_updated', {
+        this.gateway?.broadcastToSpace(id, 'server:space_status_updated', {
             spaceId: id,
             status: dto.status,
         });
         if (dto.status === client_1.SpaceStatus.LIVE) {
-            this.gateway.broadcastToBigScreen(id, 'bigscreen:flash_announcement', {
-                title: `${space.name} is now LIVE! 🎉`,
+            this.gateway?.broadcastToBigScreen(id, 'bigscreen:flash_announcement', {
+                title: `${space.name} is now LIVE!`,
             });
         }
         return space;
@@ -75,6 +78,7 @@ let SpaceService = class SpaceService {
 exports.SpaceService = SpaceService;
 exports.SpaceService = SpaceService = __decorate([
     (0, common_1.Injectable)(),
+    __param(1, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         events_gateway_1.EventsGateway])
 ], SpaceService);

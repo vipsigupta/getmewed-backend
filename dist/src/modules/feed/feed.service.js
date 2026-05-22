@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedService = void 0;
 const common_1 = require("@nestjs/common");
@@ -49,8 +52,8 @@ let FeedService = class FeedService {
                 _count: { select: { reactions: true, comments: true } },
             },
         });
-        this.gateway.broadcastToSpace(spaceId, 'server:feed_updated', post);
-        this.gateway.broadcastToBigScreen(spaceId, 'bigscreen:live_feed', post);
+        this.gateway?.broadcastToSpace(spaceId, 'server:feed_updated', post);
+        this.gateway?.broadcastToBigScreen(spaceId, 'bigscreen:live_feed', post);
         return post;
     }
     async getFeed(spaceId, cursor, limit = 20) {
@@ -110,13 +113,13 @@ let FeedService = class FeedService {
             throw e;
         }
         const counts = await this.getReactionCounts(feedPostId);
-        this.gateway.broadcastToSpace(post.spaceId, 'server:reaction_created', {
+        this.gateway?.broadcastToSpace(post.spaceId, 'server:reaction_created', {
             feedPostId,
             emoji,
             guestId,
             counts,
         });
-        this.gateway.broadcastToBigScreen(post.spaceId, 'bigscreen:float_reaction', { emoji, count: counts.total });
+        this.gateway?.broadcastToBigScreen(post.spaceId, 'bigscreen:float_reaction', { emoji, count: counts.total });
         return reaction;
     }
     async removeReaction(feedPostId, guestId, emoji) {
@@ -125,7 +128,7 @@ let FeedService = class FeedService {
             throw new common_1.NotFoundException('Feed post not found');
         await this.prisma.reaction.deleteMany({ where: { feedPostId, guestId, emoji } });
         const counts = await this.getReactionCounts(feedPostId);
-        this.gateway.broadcastToSpace(post.spaceId, 'server:reaction_removed', { feedPostId, emoji, guestId, counts });
+        this.gateway?.broadcastToSpace(post.spaceId, 'server:reaction_removed', { feedPostId, emoji, guestId, counts });
         return { removed: true };
     }
     async getReactionCounts(feedPostId) {
@@ -147,7 +150,7 @@ let FeedService = class FeedService {
             data: { feedPostId, guestId, text },
             include: { guest: { select: { id: true, name: true, profileUrl: true } } },
         });
-        this.gateway.broadcastToSpace(post.spaceId, 'server:comment_created', comment);
+        this.gateway?.broadcastToSpace(post.spaceId, 'server:comment_created', comment);
         return comment;
     }
     async getComments(feedPostId, limit = 50) {
@@ -165,6 +168,7 @@ let FeedService = class FeedService {
 exports.FeedService = FeedService;
 exports.FeedService = FeedService = __decorate([
     (0, common_1.Injectable)(),
+    __param(1, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         events_gateway_1.EventsGateway])
 ], FeedService);

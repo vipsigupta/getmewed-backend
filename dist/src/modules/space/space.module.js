@@ -11,13 +11,12 @@ const common_1 = require("@nestjs/common");
 const space_controller_1 = require("./space.controller");
 const space_service_1 = require("./space.service");
 const prisma_module_1 = require("../../prisma/prisma.module");
-const websocket_module_1 = require("../../websocket/websocket.module");
 let SpaceModule = class SpaceModule {
 };
 exports.SpaceModule = SpaceModule;
 exports.SpaceModule = SpaceModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, websocket_module_1.WebsocketModule],
+        imports: [prisma_module_1.PrismaModule],
         controllers: [space_controller_1.SpaceController],
         providers: [space_service_1.SpaceService],
         exports: [space_service_1.SpaceService],

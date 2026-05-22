@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { CreateFeedPostDto, CreateReactionDto, CreateCommentDto } from './dto/feed.dto';
@@ -7,7 +7,7 @@ import { CreateFeedPostDto, CreateReactionDto, CreateCommentDto } from './dto/fe
 export class FeedService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly gateway: EventsGateway,
+    @Optional() private readonly gateway?: EventsGateway,
   ) {}
 
   // -----------------------------------------------------------------
@@ -50,10 +50,10 @@ export class FeedService {
       },
     });
 
-    // Realtime: broadcast to all guests in the space
-    this.gateway.broadcastToSpace(spaceId, 'server:feed_updated', post);
+    // Realtime: broadcast to all guests in the space (if WebSocket is available)
+    this.gateway?.broadcastToSpace(spaceId, 'server:feed_updated', post);
     // Big screen sync
-    this.gateway.broadcastToBigScreen(spaceId, 'bigscreen:live_feed', post);
+    this.gateway?.broadcastToBigScreen(spaceId, 'bigscreen:live_feed', post);
 
     return post;
   }
@@ -131,15 +131,15 @@ export class FeedService {
     // Get updated reaction counts
     const counts = await this.getReactionCounts(feedPostId);
 
-    // Realtime broadcast
-    this.gateway.broadcastToSpace(post.spaceId, 'server:reaction_created', {
+    // Realtime broadcast (if WebSocket is available)
+    this.gateway?.broadcastToSpace(post.spaceId, 'server:reaction_created', {
       feedPostId,
       emoji,
       guestId,
       counts,
     });
     // Float across big screen
-    this.gateway.broadcastToBigScreen(post.spaceId, 'bigscreen:float_reaction', { emoji, count: counts.total });
+    this.gateway?.broadcastToBigScreen(post.spaceId, 'bigscreen:float_reaction', { emoji, count: counts.total });
 
     return reaction;
   }
@@ -151,7 +151,7 @@ export class FeedService {
     await this.prisma.reaction.deleteMany({ where: { feedPostId, guestId, emoji } });
 
     const counts = await this.getReactionCounts(feedPostId);
-    this.gateway.broadcastToSpace(post.spaceId, 'server:reaction_removed', { feedPostId, emoji, guestId, counts });
+    this.gateway?.broadcastToSpace(post.spaceId, 'server:reaction_removed', { feedPostId, emoji, guestId, counts });
 
     return { removed: true };
   }
@@ -183,8 +183,8 @@ export class FeedService {
       include: { guest: { select: { id: true, name: true, profileUrl: true } } },
     });
 
-    // Realtime broadcast
-    this.gateway.broadcastToSpace(post.spaceId, 'server:comment_created', comment);
+    // Realtime broadcast (if WebSocket is available)
+    this.gateway?.broadcastToSpace(post.spaceId, 'server:comment_created', comment);
 
     return comment;
   }

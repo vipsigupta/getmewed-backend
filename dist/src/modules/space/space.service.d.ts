@@ -3,8 +3,8 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { CreateSpaceDto, UpdateSpaceStatusDto } from './dto/space.dto';
 export declare class SpaceService {
     private readonly prisma;
-    private readonly gateway;
-    constructor(prisma: PrismaService, gateway: EventsGateway);
+    private readonly gateway?;
+    constructor(prisma: PrismaService, gateway?: EventsGateway | undefined);
     createSpace(dto: CreateSpaceDto): Promise<{
         id: string;
         name: string;

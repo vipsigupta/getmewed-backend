@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { CreateSpaceDto, UpdateSpaceStatusDto } from './dto/space.dto';
@@ -15,7 +15,7 @@ function generateInviteCode(name: string): string {
 export class SpaceService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly gateway: EventsGateway,
+    @Optional() private readonly gateway?: EventsGateway,
   ) {}
 
   async createSpace(dto: CreateSpaceDto) {
@@ -49,15 +49,15 @@ export class SpaceService {
       data: { status: dto.status },
     });
 
-    // Broadcast the live status change to all connected guests
-    this.gateway.broadcastToSpace(id, 'server:space_status_updated', {
+    // Broadcast the live status change to all connected guests (if WebSocket is available)
+    this.gateway?.broadcastToSpace(id, 'server:space_status_updated', {
       spaceId: id,
       status: dto.status,
     });
 
     if (dto.status === SpaceStatus.LIVE) {
-      this.gateway.broadcastToBigScreen(id, 'bigscreen:flash_announcement', {
-        title: `${space.name} is now LIVE! 🎉`,
+      this.gateway?.broadcastToBigScreen(id, 'bigscreen:flash_announcement', {
+        title: `${space.name} is now LIVE!`,
       });
     }
 

@@ -6,7 +6,7 @@ export declare class PerformanceService {
     private readonly prisma;
     private readonly gateway;
     private readonly notifications;
-    constructor(prisma: PrismaService, gateway: EventsGateway, notifications: NotificationService);
+    constructor(prisma: PrismaService, gateway: EventsGateway | undefined, notifications: NotificationService);
     create(dto: CreatePerformanceDto): Promise<{
         id: string;
         status: import(".prisma/client").$Enums.PerformanceStatus;

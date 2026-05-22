@@ -18,7 +18,9 @@ async function bootstrap() {
         return cachedServer;
     }
     const expressApp = (0, express_1.default)();
-    const app = await core_1.NestFactory.create(app_module_1.AppModule, new platform_express_1.ExpressAdapter(expressApp));
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, new platform_express_1.ExpressAdapter(expressApp), {
+        logger: ['error', 'warn', 'log'],
+    });
     app.setGlobalPrefix('v1');
     app.enableCors();
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
@@ -36,8 +38,17 @@ async function bootstrap() {
     return cachedServer;
 }
 const handler = async (event, context, callback) => {
-    const server = await bootstrap();
-    return server(event, context, callback);
+    try {
+        const server = await bootstrap();
+        return server(event, context, callback);
+    }
+    catch (error) {
+        console.error('Serverless bootstrap error:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Internal Server Error', message: error.message }),
+        };
+    }
 };
 exports.handler = handler;
 //# sourceMappingURL=serverless.js.map

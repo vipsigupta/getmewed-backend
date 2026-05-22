@@ -11,13 +11,12 @@ const common_1 = require("@nestjs/common");
 const feed_controller_1 = require("./feed.controller");
 const feed_service_1 = require("./feed.service");
 const prisma_module_1 = require("../../prisma/prisma.module");
-const websocket_module_1 = require("../../websocket/websocket.module");
 let FeedModule = class FeedModule {
 };
 exports.FeedModule = FeedModule;
 exports.FeedModule = FeedModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, websocket_module_1.WebsocketModule],
+        imports: [prisma_module_1.PrismaModule],
         controllers: [feed_controller_1.FeedController],
         providers: [feed_service_1.FeedService],
         exports: [feed_service_1.FeedService],

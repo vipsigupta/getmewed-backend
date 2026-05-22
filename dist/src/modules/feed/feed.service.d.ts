@@ -3,8 +3,8 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { CreateFeedPostDto, CreateReactionDto, CreateCommentDto } from './dto/feed.dto';
 export declare class FeedService {
     private readonly prisma;
-    private readonly gateway;
-    constructor(prisma: PrismaService, gateway: EventsGateway);
+    private readonly gateway?;
+    constructor(prisma: PrismaService, gateway?: EventsGateway | undefined);
     createPost(dto: CreateFeedPostDto): Promise<{
         guest: {
             id: string;
