@@ -1,0 +1,298 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------
+
+enum SpaceStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+}
+
+enum GuestGroup {
+  HOST
+  BRIDE_SIDE
+  GROOM_SIDE
+  FAMILY
+  FRIEND
+  COLLEAGUE
+  VIP
+  GUEST
+}
+
+enum AttendanceStatus {
+  YES
+  MAYBE
+  NO
+  PENDING
+}
+
+enum EventStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+}
+
+enum FeedPostType {
+  PHOTO
+  VIDEO
+  ANNOUNCEMENT
+  PERFORMANCE
+  ARRIVAL
+  SYSTEM
+}
+
+enum PerformanceStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+// ---------------------------------------------------------
+// MODELS
+// ---------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  firebaseUid  String   @unique
+  phone        String   @unique
+
+  // A single User can participate in multiple Spaces as different Guests
+  guests       Guest[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Space {
+  id          String        @id @default(uuid())
+  name        String
+  theme       String?
+  coverUrl    String?
+  inviteCode  String        @unique // Short code guests use to join
+  status      SpaceStatus   @default(UPCOMING)
+  date        DateTime
+
+  // Relations
+  guests        Guest[]
+  events        Event[]
+  feedPosts     FeedPost[]
+  performances  Performance[]
+  notifications Notification[]
+  media         Media[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Guest {
+  id            String           @id @default(uuid())
+  name          String
+  group         GuestGroup       @default(GUEST)
+  relation      String           // e.g. "Friend", "Family"
+  attendance    AttendanceStatus @default(PENDING)
+  hasArrived    Boolean          @default(false)
+  profileUrl    String?
+  isAdmin       Boolean          @default(false)
+
+  // Relations
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId       String
+  space         Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  feedPosts     FeedPost[]
+  reactions     Reaction[]
+  comments      Comment[]
+  notifications Notification[]
+  deviceTokens  DeviceToken[]
+  media         Media[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, spaceId])
+  @@index([spaceId])
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  venue       String?
+  status      EventStatus @default(UPCOMING)
+  startTime   DateTime
+  endTime     DateTime?
+
+  // Relations
+  spaceId      String
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  performances Performance[]
+  feedPosts    FeedPost[]   // Posts can be tied to a specific event
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([spaceId])
+}
+
+model FeedPost {
+  id      String       @id @default(uuid())
+  type    FeedPostType
+  content String?      // Caption or announcement text
+
+  // Optional event association
+  eventId String?
+  event   Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  // Relations
+  spaceId   String
+  space     Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  guestId   String
+  guest     Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  // Multiple media per post via join table
+  mediaItems FeedPostMedia[]
+  reactions  Reaction[]
+  comments   Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Optimized for fast realtime feed retrieval
+  @@index([spaceId, createdAt(sort: Desc)])
+  @@index([guestId])
+  @@index([eventId])
+}
+
+// Join table: a single post can have many media items
+model FeedPostMedia {
+  id         String   @id @default(uuid())
+  feedPostId String
+  feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+  mediaId    String
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  order      Int      @default(0) // for ordering multiple images in a single post
+
+  @@unique([feedPostId, mediaId])
+  @@index([feedPostId])
+}
+
+model Reaction {
+  id         String   @id @default(uuid())
+  emoji      String   // e.g. "❤️", "🔥", "🎉"
+
+  feedPostId String
+  feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+  guestId    String
+  guest      Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  // One reaction type per guest per post
+  @@unique([feedPostId, guestId, emoji])
+  @@index([feedPostId])
+  @@index([guestId])
+}
+
+model Comment {
+  id   String @id @default(uuid())
+  text String
+
+  feedPostId String
+  feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+  guestId    String
+  guest      Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([feedPostId])
+  @@index([guestId])
+}
+
+model Performance {
+  id         String            @id @default(uuid())
+  title      String
+  songName   String?
+  performers String
+  sequence   Int
+  status     PerformanceStatus @default(UPCOMING)
+
+  eventId  String?
+  event    Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  spaceId  String
+  space    Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([eventId])
+}
+
+model Media {
+  id          String    @id @default(uuid())
+  type        MediaType
+  url         String    // Supabase Public URL
+  supabaseRef String?   // Path/Key in Supabase Storage bucket
+
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  guestId     String?
+  guest       Guest?    @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  // Join table to feed posts
+  feedPostMedia FeedPostMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([guestId])
+}
+
+model Notification {
+  id      String  @id @default(uuid())
+  title   String
+  body    String
+  type    String  // "EVENT_START", "ARRIVAL", "BROADCAST"
+  isRead  Boolean @default(false)
+
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  guestId String
+  guest   Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([spaceId])
+  @@index([guestId])
+}
+
+model DeviceToken {
+  id         String  @id @default(uuid())
+  token      String  @unique
+  deviceType String? // "iOS", "Android"
+
+  guestId String
+  guest   Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guestId])
+}

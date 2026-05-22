@@ -1,0 +1,110 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AuthService = void 0;
+const common_1 = require("@nestjs/common");
+const prisma_service_1 = require("../../prisma/prisma.service");
+const admin = require("firebase-admin");
+if (!admin.apps.length) {
+    try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+        if (serviceAccount.project_id) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+            });
+        }
+    }
+    catch (e) {
+        console.error('Failed to initialize Firebase Admin', e);
+    }
+}
+let AuthService = class AuthService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async verifyFirebaseToken(idToken) {
+        try {
+            if (!admin.apps.length)
+                throw new Error('Firebase Admin not initialized');
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const { uid: firebaseUid, phone_number: phone } = decodedToken;
+            if (!phone) {
+                throw new common_1.UnauthorizedException('Phone number is missing from Firebase token');
+            }
+            const user = await this.findOrCreateUser(firebaseUid, phone);
+            return { user, token: decodedToken };
+        }
+        catch (error) {
+            throw new common_1.UnauthorizedException('Invalid Firebase Token');
+        }
+    }
+    async findOrCreateUser(firebaseUid, phone) {
+        let user = await this.prisma.user.findUnique({
+            where: { firebaseUid },
+        });
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    firebaseUid,
+                    phone,
+                },
+            });
+        }
+        return user;
+    }
+    async joinSpace(userId, spaceId, name, group, relation) {
+        const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
+        if (!space) {
+            throw new common_1.NotFoundException('Space not found');
+        }
+        const existingGuest = await this.prisma.guest.findUnique({
+            where: {
+                userId_spaceId: {
+                    userId,
+                    spaceId,
+                },
+            },
+        });
+        if (existingGuest) {
+            return existingGuest;
+        }
+        const guest = await this.prisma.guest.create({
+            data: {
+                name,
+                group: group || 'GUEST',
+                relation: relation || 'Guest',
+                userId,
+                spaceId,
+            },
+        });
+        return guest;
+    }
+    async validateSession(firebaseUid) {
+        const user = await this.prisma.user.findUnique({
+            where: { firebaseUid },
+            include: {
+                guests: {
+                    include: { space: true },
+                },
+            },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found in system');
+        }
+        return user;
+    }
+};
+exports.AuthService = AuthService;
+exports.AuthService = AuthService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+], AuthService);
+//# sourceMappingURL=auth.service.js.map
