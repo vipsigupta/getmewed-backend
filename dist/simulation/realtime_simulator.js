@@ -1,6 +1,9 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = require("axios");
+const axios_1 = __importDefault(require("axios"));
 const socket_io_client_1 = require("socket.io-client");
 const faker_1 = require("@faker-js/faker");
 const uuid_1 = require("uuid");
