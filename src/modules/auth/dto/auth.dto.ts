@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-import { GuestGroup } from '@prisma/client';
+import { GuestGroup, AttendanceStatus } from '@prisma/client';
 
 export class VerifyTokenDto {
   @IsString()
@@ -23,4 +23,8 @@ export class JoinSpaceDto {
   @IsString()
   @IsOptional()
   relation?: string;
+
+  @IsEnum(AttendanceStatus)
+  @IsOptional()
+  attendance?: AttendanceStatus;
 }

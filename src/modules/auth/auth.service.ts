@@ -67,33 +67,32 @@ export class AuthService {
   /**
    * 3. Join a specific Celebration Space as a Guest
    */
-  async joinSpace(userId: string, spaceId: string, name: string, group?: any, relation?: string) {
+  async joinSpace(userId: string, spaceId: string, name: string, group?: any, relation?: string, attendance?: any) {
     // Verify space exists
     const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
 
-    // Check for duplicate join
-    const existingGuest = await this.prisma.guest.findUnique({
+    // Upsert the Guest participation record to support profile completion
+    const guest = await this.prisma.guest.upsert({
       where: {
         userId_spaceId: {
           userId,
           spaceId,
         },
       },
-    });
-
-    if (existingGuest) {
-      return existingGuest; // Return existing or throw ConflictException
-    }
-
-    // Create the Guest participation record
-    const guest = await this.prisma.guest.create({
-      data: {
+      update: {
+        name,
+        group: group || undefined,
+        relation: relation || undefined,
+        attendance: attendance || undefined,
+      },
+      create: {
         name,
         group: group || 'GUEST',
         relation: relation || 'Guest',
+        attendance: attendance || 'PENDING',
         userId,
         spaceId,
       },
@@ -119,6 +118,16 @@ export class AuthService {
       throw new UnauthorizedException('User not found in system');
     }
 
-    return user;
+    // isNewUser: true if the user has never completed their profile (no name saved)
+    const isNewUser = !user.name;
+
+    return { ...user, isNewUser };
+  }
+
+  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
   }
 }

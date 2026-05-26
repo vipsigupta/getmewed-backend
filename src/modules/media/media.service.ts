@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 import { MediaType } from '@prisma/client';
 
 const BUCKET_NAME = 'space-media';
@@ -24,7 +24,7 @@ export class MediaService {
    */
   async getUploadUrl(filename: string, type: MediaType, spaceId: string, guestId: string) {
     const ext = filename.split('.').pop() || 'bin';
-    const supabaseRef = `${spaceId}/${guestId}/${uuidv4()}.${ext}`;
+    const supabaseRef = `${spaceId}/${guestId}/${crypto.randomUUID()}.${ext}`;
 
     // Create a signed upload URL (client uploads directly to Supabase)
     const { data, error } = await this.supabase.storage

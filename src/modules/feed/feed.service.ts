@@ -80,7 +80,37 @@ export class FeedService {
       ? posts[posts.length - 1].createdAt.toISOString()
       : null;
 
-    return { posts, nextCursor };
+    let feedContext = undefined;
+    
+    // Only return context on the first page load
+    if (!cursor) {
+      const space = await this.prisma.space.findUnique({
+        where: { id: spaceId },
+        select: { name: true, date: true, status: true },
+      });
+
+      const guestCount = await this.prisma.guest.count({
+        where: { spaceId, attendance: { in: ['YES', 'MAYBE'] } },
+      });
+
+      const activeEvents = await this.prisma.event.findMany({
+        where: { spaceId, status: 'LIVE' },
+        select: { title: true, venue: true },
+      });
+
+      feedContext = {
+        totalGuestsAttending: guestCount,
+        spaceDate: space?.date,
+        spaceStatus: space?.status,
+        activeEvents,
+        isEmpty: posts.length === 0,
+        welcomeMessage: posts.length === 0 
+          ? `Welcome to ${space?.name || 'the celebration'}! The feed will come alive once the party starts.` 
+          : undefined,
+      };
+    }
+
+    return { context: feedContext, posts, nextCursor };
   }
 
   async getTrending(spaceId: string) {

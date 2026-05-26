@@ -20,6 +20,22 @@ export class FirebaseAuthGuard implements CanActivate {
     const idToken = authHeader.split('Bearer ')[1];
 
     try {
+      // DEV BYPASS: Allow local testing without real Firebase Auth
+      // Token format: mock_firebase_token_{phoneNumber}
+      if (idToken.startsWith('mock_firebase_token_')) {
+        const phone = idToken.replace('mock_firebase_token_', '');
+        const testUser = await this.prisma.user.upsert({
+          where: { phone },
+          update: {},
+          create: {
+            phone,
+            firebaseUid: `mock_uid_${phone}`,
+          },
+        });
+        request.user = testUser;
+        return true;
+      }
+
       // 1. Verify token with Firebase Admin
       const decodedToken = await this.firebase.verifyIdToken(idToken);
       

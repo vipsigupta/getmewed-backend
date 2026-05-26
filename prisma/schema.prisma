@@ -62,6 +62,15 @@ enum MediaType {
   VIDEO
 }
 
+enum SpaceEventType {
+  WEDDING
+  BIRTHDAY
+  ANNIVERSARY
+  POOJA
+  GET_TOGETHER
+  OTHER
+}
+
 // ---------------------------------------------------------
 // MODELS
 // ---------------------------------------------------------
@@ -70,6 +79,8 @@ model User {
   id           String   @id @default(uuid())
   firebaseUid  String   @unique
   phone        String   @unique
+  name         String?  // Set during profile setup - null means new user
+  avatarUrl    String?  // Optional profile photo URL
 
   // A single User can participate in multiple Spaces as different Guests
   guests       Guest[]
@@ -83,8 +94,9 @@ model Space {
   name        String
   theme       String?
   coverUrl    String?
-  inviteCode  String        @unique // Short code guests use to join
-  status      SpaceStatus   @default(UPCOMING)
+  inviteCode  String         @unique // Short code guests use to join
+  status      SpaceStatus    @default(UPCOMING)
+  eventType   SpaceEventType @default(WEDDING)
   date        DateTime
 
   // Relations

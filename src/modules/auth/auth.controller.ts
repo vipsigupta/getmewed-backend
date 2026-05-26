@@ -1,11 +1,19 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { 
+  Controller, Post, Get, Patch, Body, UseGuards, 
+  Request, UseInterceptors, UploadedFile 
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { VerifyTokenDto, JoinSpaceDto } from './dto/auth.dto';
-// Note: In a real app, we'd have a FirebaseAuthGuard that sets req.user. For MVP speed, we'll manually extract the token or mock the guard.
+import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
+import { SupabaseStorageService } from './supabase-storage.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly storageService: SupabaseStorageService,
+  ) {}
 
   @Post('verify')
   async verify(@Body() body: VerifyTokenDto) {
@@ -17,40 +25,54 @@ export class AuthController {
   }
 
   @Post('join-space')
+  @UseGuards(FirebaseAuthGuard)
   async joinSpace(@Body() body: JoinSpaceDto, @Request() req: any) {
-    // In a guarded route, req.user would have the userId from validateSession.
-    // Assuming we pass userId manually for MVP if guard isn't active, but ideally the client sends the Bearer token
-    // For simplicity, let's assume the user sends their firebaseUid or internal userId in headers, or we use a Guard.
-    // If we use a Guard, we extract userId from req.user.id
-    const userId = req.user?.id || req.headers['x-user-id']; // Fallback for MVP testing
-    if (!userId) {
-      throw new Error('User ID required in headers (x-user-id) or auth context');
-    }
-
+    const userId = req.user.id;
     const guest = await this.authService.joinSpace(
       userId,
       body.spaceId,
       body.name,
       body.group,
       body.relation,
+      body.attendance,
     );
-
-    return {
-      message: 'Joined space successfully',
-      guest,
-    };
+    return { message: 'Joined space successfully', guest };
   }
 
   @Get('session')
+  @UseGuards(FirebaseAuthGuard)
   async getSession(@Request() req: any) {
-    const firebaseUid = req.user?.firebaseUid || req.headers['x-firebase-uid'];
-    if (!firebaseUid) {
-      throw new Error('Firebase UID required in headers (x-firebase-uid) or auth context');
-    }
-
+    const firebaseUid = req.user.firebaseUid;
     const user = await this.authService.validateSession(firebaseUid);
-    return {
-      user,
-    };
+    return { user };
+  }
+
+  @Patch('profile')
+  @UseGuards(FirebaseAuthGuard)
+  async updateProfile(@Body() body: { name?: string; avatarUrl?: string }, @Request() req: any) {
+    const userId = req.user.id;
+    const user = await this.authService.updateProfile(userId, body);
+    return { message: 'Profile updated successfully', user };
+  }
+
+  /**
+   * POST /auth/upload-avatar
+   * Accepts a multipart file, uploads it to Supabase Storage,
+   * and returns the permanent public URL.
+   */
+  @Post('upload-avatar')
+  @UseGuards(FirebaseAuthGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } })) // 5MB limit
+  async uploadAvatar(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
+  ) {
+    const userId = req.user.id;
+    const avatarUrl = await this.storageService.uploadAvatar(file, userId);
+
+    // Immediately save it to the user's profile
+    await this.authService.updateProfile(userId, { avatarUrl });
+
+    return { avatarUrl };
   }
 }

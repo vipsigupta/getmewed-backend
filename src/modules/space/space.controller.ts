@@ -1,6 +1,7 @@
-import { Controller, Post, Get, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Request, UseGuards } from '@nestjs/common';
 import { SpaceService } from './space.service';
 import { CreateSpaceDto, UpdateSpaceStatusDto } from './dto/space.dto';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 
 @Controller('spaces')
 export class SpaceController {
@@ -8,8 +9,16 @@ export class SpaceController {
 
   // Admin creates a new celebration space (wedding, birthday, etc.)
   @Post()
-  createSpace(@Body() dto: CreateSpaceDto) {
-    return this.spaceService.createSpace(dto);
+  @UseGuards(FirebaseAuthGuard)
+  createSpace(@Body() dto: CreateSpaceDto, @Request() req: any) {
+    const userId = req.user.id;
+    return this.spaceService.createSpace(userId, dto);
+  }
+
+  // Get space details by invite code for mobile onboarding
+  @Get('invite/:code')
+  getSpaceByInviteCode(@Param('code') code: string) {
+    return this.spaceService.getSpaceByInviteCode(code.toUpperCase());
   }
 
   // Get full space details (itinerary, guest count)

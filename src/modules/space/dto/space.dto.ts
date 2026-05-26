@@ -1,7 +1,7 @@
 import {
-  IsString, IsNotEmpty, IsEnum, IsOptional, IsDateString,
+  IsString, IsNotEmpty, IsEnum, IsOptional, IsDateString, IsArray,
 } from 'class-validator';
-import { SpaceStatus } from '@prisma/client';
+import { SpaceStatus, SpaceEventType } from '@prisma/client';
 
 export class CreateSpaceDto {
   @IsString()
@@ -18,6 +18,27 @@ export class CreateSpaceDto {
 
   @IsDateString()
   date: string;
+
+  @IsEnum(SpaceEventType)
+  @IsOptional()
+  eventType?: SpaceEventType;
+
+  @IsString()
+  @IsOptional()
+  venue?: string;
+
+  @IsString()
+  @IsOptional()
+  keyPeople?: string; // Serialized JSON containing VIP details
+
+  @IsArray()
+  @IsOptional()
+  timeline?: {
+    title: string;
+    time: string;
+    venue: string;
+    period: 'MORNING' | 'AFTERNOON' | 'EVENING';
+  }[];
 }
 
 export class UpdateSpaceStatusDto {
