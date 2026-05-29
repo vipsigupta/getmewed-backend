@@ -21,18 +21,19 @@ export class GuestService {
     });
     if (!space) throw new NotFoundException('Invalid invite code. Please check your invitation link.');
 
-    // 2. Prevent duplicate participation
+    // 2. Prevent duplicate participation (idempotent — return existing guest record)
     const existing = await this.prisma.guest.findUnique({
       where: { userId_spaceId: { userId, spaceId: space.id } },
     });
-    if (existing) return existing; // Idempotent — return existing guest record
+    if (existing) return existing;
 
-    // 3. Create the participation record
+    // 3. Create the participation record with full RSVP data from the onboarding funnel
     const guest = await this.prisma.guest.create({
       data: {
         name: dto.name,
         group: dto.group || 'GUEST',
         relation: dto.relation || 'Guest',
+        attendance: dto.attendance || 'PENDING',
         profileUrl: dto.profileUrl,
         userId,
         spaceId: space.id,
@@ -145,5 +146,25 @@ export class GuestService {
     });
     if (!guest) throw new NotFoundException('Guest not found');
     return guest;
+  }
+
+  // -----------------------------------------------------------------
+  // CHECK MEMBERSHIP — lightweight check for the join funnel
+  // Returns whether the current user is already a guest in a space.
+  // Used by mobile to skip the onboarding funnel for known guests.
+  // -----------------------------------------------------------------
+
+  async checkMembership(userId: string, spaceId: string) {
+    const guest = await this.prisma.guest.findUnique({
+      where: { userId_spaceId: { userId, spaceId } },
+      select: { id: true, group: true, attendance: true, relation: true },
+    });
+    return {
+      isMember: !!guest,
+      guestId:   guest?.id,
+      group:     guest?.group,
+      attendance: guest?.attendance,
+      relation:  guest?.relation,
+    };
   }
 }

@@ -11,7 +11,7 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 export class GuestController {
   constructor(private readonly guestService: GuestService) {}
 
-  // ── Onboarding: Guest enters invite code and joins the space ──────
+  // ── Onboarding: Guest enters invite code and joins the space ────────────────
 
   @Post('join')
   joinSpace(
@@ -22,7 +22,19 @@ export class GuestController {
     return this.guestService.joinSpace(userId, dto);
   }
 
-  // ── Update guest profile, side, relation, or attendance ───────────
+  // ── Lightweight check: is current user already a member of this space? ────
+  // Used by the mobile join funnel to decide whether to skip onboarding.
+
+  @Get('check/:spaceId')
+  checkMembership(
+    @Param('spaceId') spaceId: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user.id;
+    return this.guestService.checkMembership(userId, spaceId);
+  }
+
+  // ── Update guest profile, side, relation, or attendance ───────────────────
 
   @Patch(':guestId')
   updateParticipation(
@@ -32,7 +44,7 @@ export class GuestController {
     return this.guestService.updateParticipation(guestId, dto);
   }
 
-  // ── Leave a celebration space ──────────────────────────────────────
+  // ── Leave a celebration space ───────────────────────────────────────────
 
   @Delete('leave/:spaceId')
   leaveSpace(
@@ -43,7 +55,7 @@ export class GuestController {
     return this.guestService.leaveSpace(userId, spaceId);
   }
 
-  // ── Get a single guest record ──────────────────────────────────────
+  // ── Get a single guest record ──────────────────────────────────────────
 
   @Get(':guestId')
   getGuest(@Param('guestId') guestId: string) {

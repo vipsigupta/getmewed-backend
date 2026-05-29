@@ -49,7 +49,16 @@ export class AuthController {
 
   @Patch('profile')
   @UseGuards(FirebaseAuthGuard)
-  async updateProfile(@Body() body: { name?: string; avatarUrl?: string }, @Request() req: any) {
+  async updateProfile(
+    @Body() body: { 
+      name?: string; 
+      avatarUrl?: string;
+      location?: string;
+      profession?: string;
+      email?: string;
+    }, 
+    @Request() req: any
+  ) {
     const userId = req.user.id;
     const user = await this.authService.updateProfile(userId, body);
     return { message: 'Profile updated successfully', user };
@@ -74,5 +83,19 @@ export class AuthController {
     await this.authService.updateProfile(userId, { avatarUrl });
 
     return { avatarUrl };
+  }
+
+  /**
+   * POST /auth/upload-image
+   * Accepts any generic image file upload and returns its permanent Supabase storage URL.
+   */
+  @Post('upload-image')
+  @UseGuards(FirebaseAuthGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } })) // 10MB limit
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const imageUrl = await this.storageService.uploadImage(file);
+    return { imageUrl };
   }
 }

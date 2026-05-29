@@ -29,6 +29,10 @@ export class CreateSpaceDto {
 
   @IsString()
   @IsOptional()
+  locationLink?: string;
+
+  @IsString()
+  @IsOptional()
   keyPeople?: string; // Serialized JSON containing VIP details
 
   @IsArray()
@@ -38,6 +42,8 @@ export class CreateSpaceDto {
     time: string;
     venue: string;
     period: 'MORNING' | 'AFTERNOON' | 'EVENING';
+    dressCode?: string;
+    mealOptions?: string;
   }[];
 }
 

@@ -48,4 +48,26 @@ export class SupabaseStorageService {
     this.logger.log(`Avatar uploaded for user ${userId}: ${publicUrl}`);
     return publicUrl;
   }
+
+  async uploadImage(file: Express.Multer.File): Promise<string> {
+    const crypto = require('crypto');
+    const ext = file.mimetype.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+    const key = `${crypto.randomUUID()}.${ext}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.BUCKET,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: 'public-read' as any,
+      }),
+    );
+
+    const supabaseUrl = this.config.get<string>('SUPABASE_URL');
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${this.BUCKET}/${key}`;
+
+    this.logger.log(`General image uploaded: ${publicUrl}`);
+    return publicUrl;
+  }
 }

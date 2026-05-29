@@ -30,6 +30,30 @@ function parseTimeWithBaseDate(baseDateStr: string, timeStr: string): Date {
   return date;
 }
 
+function enrichSpace(space: any) {
+  if (!space) return space;
+  let parsedTheme: any = {};
+  try {
+    if (space.theme) {
+      parsedTheme = JSON.parse(space.theme);
+    }
+  } catch (e) {
+    parsedTheme = { welcomeMessage: space.theme };
+  }
+
+  const keyPeopleObj = parsedTheme.keyPeople || {};
+  return {
+    ...space,
+    welcomeMessage: parsedTheme.welcomeMessage || '',
+    venue: parsedTheme.venue || space.venue || '',
+    locationLink: parsedTheme.locationLink || '',
+    dressCode: parsedTheme.dressCode || '',
+    mealOptions: parsedTheme.mealOptions || '',
+    keyPeople: keyPeopleObj,
+    religion: keyPeopleObj.religion || 'HINDU',
+  };
+}
+
 @Injectable()
 export class SpaceService {
   constructor(
@@ -40,14 +64,24 @@ export class SpaceService {
   async createSpace(userId: string, dto: CreateSpaceDto) {
     const inviteCode = generateInviteCode(dto.name);
     
+    let kpObj: any = {};
+    try {
+      if (dto.keyPeople) {
+        kpObj = JSON.parse(dto.keyPeople);
+      }
+    } catch (_) {}
+
     // Store extra fields (venue, keyPeople) elegantly in the theme/meta JSON or fields
     const parsedTheme = JSON.stringify({
       welcomeMessage: dto.theme || 'We are excited to celebrate with you!',
       venue: dto.venue || '',
-      keyPeople: dto.keyPeople ? JSON.parse(dto.keyPeople) : {},
+      locationLink: dto.locationLink || kpObj.locationLink || '',
+      dressCode: kpObj.dressCode || '',
+      mealOptions: kpObj.mealOptions || '',
+      keyPeople: kpObj,
     });
 
-    return await this.prisma.$transaction(async (tx) => {
+    const spaceResult = await this.prisma.$transaction(async (tx) => {
       // 1. Create main Celebration Space
       const space = await tx.space.create({
         data: {
@@ -77,10 +111,17 @@ export class SpaceService {
         for (const prog of dto.timeline) {
           if (prog.title) {
             const startTime = parseTimeWithBaseDate(dto.date, prog.time);
+            
+            const eventDesc = JSON.stringify({
+              period: prog.period,
+              dressCode: prog.dressCode || '',
+              mealOptions: prog.mealOptions || '',
+            });
+
             await tx.event.create({
               data: {
                 title: prog.title,
-                description: `${prog.period} program schedule`,
+                description: eventDesc,
                 venue: prog.venue || dto.venue || 'Main Venue',
                 startTime,
                 spaceId: space.id,
@@ -92,6 +133,8 @@ export class SpaceService {
 
       return space;
     });
+
+    return enrichSpace(spaceResult);
   }
 
   async getSpace(id: string) {
@@ -103,7 +146,7 @@ export class SpaceService {
       },
     });
     if (!space) throw new NotFoundException('Space not found');
-    return space;
+    return enrichSpace(space);
   }
 
   async getSpaceByInviteCode(inviteCode: string) {
@@ -115,7 +158,7 @@ export class SpaceService {
       },
     });
     if (!space) throw new NotFoundException('Invalid or expired invite code');
-    return space;
+    return enrichSpace(space);
   }
 
   async updateStatus(id: string, dto: UpdateSpaceStatusDto) {
@@ -136,7 +179,7 @@ export class SpaceService {
       });
     }
 
-    return space;
+    return enrichSpace(space);
   }
 
   async getGuests(spaceId: string) {

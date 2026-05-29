@@ -20,6 +20,10 @@ export class JoinSpaceDto {
   @IsOptional()
   relation?: string; // e.g. "MAMAJI", "COUSIN", "FRIEND"
 
+  @IsEnum(AttendanceStatus)
+  @IsOptional()
+  attendance?: AttendanceStatus; // Captured from RSVP screen at join time
+
   @IsString()
   @IsOptional()
   profileUrl?: string;

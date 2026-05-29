@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RequestMethod } from '@nestjs/common';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -16,7 +16,12 @@ async function bootstrapNest() {
       AppModule,
       new ExpressAdapter(server)
     );
-    app.setGlobalPrefix('v1');
+    app.setGlobalPrefix('v1', {
+      exclude: [
+        { path: 'invite/:code', method: RequestMethod.GET },
+        { path: 'invite/(.*)', method: RequestMethod.GET },
+      ],
+    });
     app.enableCors();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true })
