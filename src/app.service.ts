@@ -141,36 +141,71 @@ export class AppService {
     const focusType = keyPeople?.focusType || '2_PERSON';
     const is2Person = focusType === '2_PERSON' && person1Name && person2Name;
 
+    // Image optimization helper (Supabase CDN + Unsplash)
+    const optimizeImageUrl = (url: string, width = 800) => {
+      if (!url) return url;
+      if (url.includes('supabase.co/storage/v1/object/public/')) {
+        return url.replace('/object/public/', '/render/image/public/') + `?width=${width}&quality=80`;
+      }
+      if (url.includes('unsplash.com')) {
+        let ogImageUrl = url.replace('w=1200', `w=${width}`).replace('w=800', `w=${width}`);
+        if (!ogImageUrl.includes('w=')) {
+          ogImageUrl += `&w=${width}&fit=crop&q=80`;
+        }
+        return ogImageUrl;
+      }
+      return url;
+    };
+
     // Cover image setup
-    let coverUrl = theme.photoUrl;
-    if (keyPeople?.starPhoto && keyPeople.starPhoto.trim() !== '') {
-      coverUrl = keyPeople.starPhoto;
+    let coverUrls = [theme.photoUrl];
+    if (keyPeople?.starPhotos && Array.isArray(keyPeople.starPhotos) && keyPeople.starPhotos.length > 0) {
+      coverUrls = keyPeople.starPhotos;
+    } else if (keyPeople?.starPhoto && keyPeople.starPhoto.trim() !== '') {
+      coverUrls = [keyPeople.starPhoto];
     } else if (space.coverUrl && space.coverUrl.trim() !== '') {
-      if (space.coverUrl.startsWith('http')) {
-        coverUrl = space.coverUrl;
+      if (space.coverUrl.startsWith('http') && !space.coverUrl.includes('unsplash.com/photo-1519225421980')) {
+        coverUrls = [space.coverUrl];
       } else {
         // Map local/offline keys to beautiful web-accessible Unsplash fallbacks
         const key = space.coverUrl.toLowerCase();
         if (key.includes('wedding')) {
-          coverUrl = theme.photoUrl; // religion-specific default
+          coverUrls = [theme.photoUrl];
         } else if (key.includes('birthday')) {
-          coverUrl = 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1200&h=800&fit=crop&auto=format';
+          coverUrls = ['https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1200&h=800&fit=crop&auto=format'];
         } else if (key.includes('anniversary')) {
-          coverUrl = 'https://images.unsplash.com/photo-1494867985807-96ca17098cc9?w=1200&h=800&fit=crop&auto=format';
+          coverUrls = ['https://images.unsplash.com/photo-1494867985807-96ca17098cc9?w=1200&h=800&fit=crop&auto=format'];
         } else {
-          coverUrl = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1200';
+          coverUrls = ['https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1200'];
         }
       }
     }
-
-    // High-performance image optimization specifically for WhatsApp/Telegram scraper crawler (under 80KB)
-    let ogImageUrl = coverUrl;
-    if (ogImageUrl.includes('unsplash.com')) {
-      ogImageUrl = ogImageUrl.replace('w=1200', 'w=600&h=400').replace('w=800', 'w=600&h=400');
-      if (!ogImageUrl.includes('w=')) {
-        ogImageUrl += '&w=600&h=400&fit=crop&q=80';
+    
+    // Get original raw URL before 400px compression for OG image
+    const rawCoverUrl = coverUrls[0];
+    
+    const getWhatsAppOgImage = (url: string) => {
+      if (!url) return url;
+      if (url.includes('supabase.co/storage/v1/render/image/public/')) {
+        // Remove existing query params if it was already optimized
+        const base = url.split('?')[0];
+        return base + '?width=1200&height=630&resize=contain&quality=80';
       }
-    }
+      if (url.includes('supabase.co/storage/v1/object/public/')) {
+        return url.replace('/object/public/', '/render/image/public/') + '?width=1200&height=630&resize=contain&quality=80';
+      }
+      if (url.includes('unsplash.com')) {
+        const base = url.split('?')[0];
+        return `${base}?w=1200&h=630&fit=fill&fill=blur&q=80&auto=format`;
+      }
+      return url;
+    };
+
+    coverUrls = coverUrls.map(url => optimizeImageUrl(url, 400));
+    const coverUrl = coverUrls[0];
+
+    // Perfect 1.91:1 landscape image for WhatsApp Link Previews
+    let ogImageUrl = getWhatsAppOgImage(rawCoverUrl);
 
     // Format dates & locations
     const eventDate = new Date(space.date);
@@ -366,15 +401,40 @@ export class AppService {
       margin-bottom: 12px;
     }
 
-    /* Celebrant Photo */
+    /* Celebrant Photo & Carousel */
+    .photo-scroller {
+      width: 100%;
+      overflow: hidden;
+      margin: 0 auto 16px;
+      white-space: nowrap;
+      position: relative;
+    }
+    
+    .photo-track {
+      display: inline-block;
+      animation: scroll-photos ${coverUrls.length * 3}s linear infinite;
+    }
+    
+    @keyframes scroll-photos {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
     .celebrant-photo {
       width: 90px;
       height: 90px;
       border-radius: 50%;
       border: 2px solid var(--primary);
-      margin: 0 auto 16px;
       object-fit: cover;
       box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      display: inline-block;
+      margin: 0 8px;
+    }
+    
+    /* Center single photo */
+    .single-photo {
+      margin: 0 auto 16px;
+      display: block;
     }
 
     /* Georgia Serif Typography matching native app */
@@ -675,7 +735,16 @@ export class AppService {
       <div class="invited-label">You Are Cordially Invited To</div>
 
       <!-- Celebrant Photo -->
-      <img src="${coverUrl}" class="celebrant-photo" alt="Celebrant Photo" />
+      ${coverUrls.length > 1 ? `
+        <div class="photo-scroller">
+          <div class="photo-track">
+            ${coverUrls.map(url => `<img src="${url}" class="celebrant-photo" alt="Celebrant Photo" />`).join('')}
+            ${coverUrls.map(url => `<img src="${url}" class="celebrant-photo" alt="Celebrant Photo" />`).join('')}
+          </div>
+        </div>
+      ` : `
+        <img src="${coverUrl}" class="celebrant-photo single-photo" alt="Celebrant Photo" />
+      `}
 
       <!-- Naming Section -->
       <div class="names">
